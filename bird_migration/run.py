@@ -44,6 +44,7 @@ for t in tqdm(range(len(TIMES)-RUNTIME+1)):
         3*np.pi/2, 
         NUM_BIRDS
     )
+    SELF_SPEED = (7*np.random.rand(NUM_BIRDS*N_SIMS)) + 8
     
     WIND = np.stack((
         da['u'].sel(time = xr.DataArray(TIMES[t:t+RUNTIME])).values, 
@@ -66,10 +67,10 @@ for t in tqdm(range(len(TIMES)-RUNTIME+1)):
     )
 
     file_name = f"df_{str(TIMES[t])[:13]}_{str(TIMES[t+RUNTIME])[:13]}.p"
+    model['airspeed'] = np.nan
+    model.loc[:SELF_SPEED.shape[0] - 1, 'airspeed'] = SELF_SPEED
     model.to_pickle(fr"results\{file_name}")
-    np.save(
-        fr"results\{str(TIMES[t])[:13]}_{str(TIMES[t+RUNTIME])[:13]}",
-        SELF_SPEED
+    
     )
     
     
