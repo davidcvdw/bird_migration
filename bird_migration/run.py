@@ -70,7 +70,3 @@ for t in tqdm(range(len(TIMES)-RUNTIME+1)):
     model['airspeed'] = np.nan
     model.loc[:SELF_SPEED.shape[0] - 1, 'airspeed'] = SELF_SPEED
     model.to_pickle(fr"results\{file_name}")
-    
-    )
-    
-    
