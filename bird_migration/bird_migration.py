@@ -429,7 +429,7 @@ class BirdMigration:
                 v_w = self.f(np.insert(current_locs, 0, 1, axis=1))
                 
                 # bird airspeed components
-                u_b, v_b = self.get_bird_speed(self_speed, bearing)
+                u_b, v_b = self.get_bird_speed(self_speed, current_bearing)
 
                 # calculating new position
                 lat_1, lon_1 = self.get_current_degrees(current_locs)
@@ -488,7 +488,7 @@ class BirdMigration:
                 v_w = self.f(np.insert(current_locs, 0, 1, axis=1))
                 
                 # bird airspeed components
-                u_b, v_b = self.get_bird_speed(self_speed, bearing)
+                u_b, v_b = self.get_bird_speed(self_speed, current_bearing)
 
                 # calculating new position
                 lat_1, lon_1 = self.get_current_degrees(current_locs)
