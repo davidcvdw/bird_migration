@@ -77,57 +77,16 @@ class BirdMigration:
             Bearing to the goal.
 
         '''
-        
-        if loc.shape[1] == 2:
             
-            phi1 = np.radians(loc[:,0])
-            labda1 = np.radians(loc[:,1])
-            phi2 = np.radians(goal[:,0])
-            labda2 = np.radians(goal[:,1])
-            y = np.sin(labda2-labda1) * np.cos(phi2)
-            x = np.cos(phi1) * np.sin(phi2) - \
-                np.sin(phi1) * np.cos(phi2) * np.cos(labda2 - labda1)
-            
-            return (np.arctan2(y, x) + 2*np.pi) % (2*np.pi)
+        phi1 = np.radians(loc[:,1])
+        labda1 = np.radians(loc[:,2])
+        phi2 = np.radians(goal[:,0])
+        labda2 = np.radians(goal[:,1])
+        y = np.sin(labda2-labda1) * np.cos(phi2)
+        x = np.cos(phi1)*np.sin(phi2) - \
+            np.sin(phi1)*np.cos(phi2)*np.cos(labda2-labda1)
         
-        if loc.shape[1] == 3:
-            
-            phi1 = np.radians(loc[:,1])
-            labda1 = np.radians(loc[:,2])
-            phi2 = np.radians(goal[:,0])
-            labda2 = np.radians(goal[:,1])
-            y = np.sin(labda2-labda1) * np.cos(phi2)
-            x = np.cos(phi1)*np.sin(phi2) - \
-                np.sin(phi1)*np.cos(phi2)*np.cos(labda2-labda1)
-            
-            return (np.arctan2(y, x) + 2*np.pi) % (2*np.pi)
-    
-    def get_angle_with_y(
-            self,
-            u,
-            v,
-            alpha
-        ):
-        '''
-        alpha: arctan(u/v)
-        '''
-        
-        # calculate the angle between wind and bird
-        brng  = np.where(
-            (u >= 0) & (v >= 0), 
-            alpha, 
-            np.where(
-                (u > 0) & (v < 0), 
-                np.pi - alpha,
-                np.where(
-                    (u < 0) & (v > 0), 
-                    2*np.pi - alpha,
-                    alpha + np.pi
-                )
-            )
-        )
-        
-        return brng
+        return (np.arctan2(y, x) + 2*np.pi) % (2*np.pi)
     
     def tailwind(
             self, 
@@ -157,27 +116,13 @@ class BirdMigration:
 
         '''
         
-        # calculate the angle between wind and bird
-        alpha = np.where(
-            (u >= 0) == (v >= 0), 
-            bearing, 
-            np.where(
-                (u > 0) == (v < 0), 
-                np.pi - bearing,
-                np.where(
-                    (u < 0) == (v > 0), 
-                    2*np.pi - bearing,
-                    bearing - np.pi
-                )
-            )
-        )
-
-        u_bird = np.sin(alpha) * self_speed # u component of bird speed
-        v_bird = np.cos(alpha) * self_speed # v component of bird speed
+        # angle wind makes with positive y-axis
+        beta = (np.arctan2(u,v) + 2*np.pi) % (2*np.pi)
+        # angle between wind and bird bearing
+        alpha = abs(bearing - beta)
         
         w = np.sqrt(u ** 2 + v ** 2)
-        cos_beta = (u*u_bird + v*v_bird) / (w*self_speed)
-        tailwind = w * cos_beta
+        tailwind = w * np.cos(alpha)
         
         return tailwind
     
@@ -185,7 +130,6 @@ class BirdMigration:
             self, 
             locs, 
             bearing, 
-            t, 
             self_speed, 
             f, 
             pressure_lvls, 
@@ -224,6 +168,8 @@ class BirdMigration:
 
         '''
         
+        # timestep is the same for all birds
+        t = int(locs[0, 0].copy())
         # we start with the current height
         p = locs[:, 1].copy()
         
@@ -237,10 +183,10 @@ class BirdMigration:
             self_speed
         )
         
-        # at t = 1 we go up
+        # at t = 0 we go up
         # we keep climbing until wind support does not increase significantly   
         
-        if t == 1:
+        if t == 0:
             
             ps = np.array([
                 np.arange(
@@ -325,9 +271,9 @@ class BirdMigration:
     
     def get_ground_distance(self, u, v):
         d = self.update_time*3600 * np.sqrt(
-            (u) ** 2 + (v) ** 2
+            u ** 2 + v ** 2
         )
-        alpha = abs(np.arctan(u / v))
+        alpha = (np.arctan2(u,v) + 2*np.pi) % (2*np.pi)
         return d, alpha
       
     def get_new_radians(self, phi_1, lambda_1, d, brng):
@@ -403,17 +349,15 @@ class BirdMigration:
 
         #for the model where you only look at the initial bearing
         if isinstance(bearing, np.ndarray):
-            bearings.append(bearing)
+            
             for t in range(1, runtime+1, update_time):
             
                 # select current information
                 current_locs = locs[t-1]
-                current_bearing = bearings[t-1]
                 
                 p = self.optimal_height(
                     current_locs, 
-                    current_bearing, 
-                    t, 
+                    bearing, 
                     self_speed, 
                     self.f, 
                     self.pressure_lvls, 
@@ -429,7 +373,7 @@ class BirdMigration:
                 v_w = self.f(np.insert(current_locs, 0, 1, axis=1))
                 
                 # bird airspeed components
-                u_b, v_b = self.get_bird_speed(self_speed, current_bearing)
+                u_b, v_b = self.get_bird_speed(self_speed, bearing)
 
                 # calculating new position
                 lat_1, lon_1 = self.get_current_degrees(current_locs)
@@ -438,12 +382,10 @@ class BirdMigration:
                 u = u_w + u_b
                 v = v_w + v_b
                 
-                d, alpha = self.get_ground_distance(u, v)
-                brng = self.get_angle_with_y(u, v, alpha)
+                d, brng = self.get_ground_distance(u, v)
+                # brng = self.get_angle_with_y(u, v, alpha)
 
                 lat_2, lon_2 = self.get_new_radians(phi_1, lambda_1, d, brng)
-                
-                bearings.append(current_bearing)
                 
                 # calculate new location
                 new_loc = np.column_stack((
@@ -455,6 +397,8 @@ class BirdMigration:
                     lon_2))
      
                 locs.append(new_loc)
+            
+            bearings = np.tile(bearing, runtime+1)
                 
         if isinstance(goal, np.ndarray):
             #calculate shortest angle to the goal
@@ -466,13 +410,12 @@ class BirdMigration:
             for t in range(1, runtime+1, update_time):
                
                 # select current information
-                current_locs = locs[t-1]                
-                current_bearing = bearings[t-1]
+                current_locs = locs[t-1].copy()                
+                current_bearing = bearings[t-1].copy()
                 
                 p = self.optimal_height(
                     current_locs, 
                     current_bearing, 
-                    t, 
                     self_speed, 
                     self.f, 
                     self.pressure_lvls, 
@@ -497,8 +440,7 @@ class BirdMigration:
                 u = u_w + u_b
                 v = v_w + v_b
                 
-                d, alpha = self.get_ground_distance(u, v)
-                brng = self.get_angle_with_y(u, v, alpha)
+                d, brng = self.get_ground_distance(u, v)
 
                 lat_2, lon_2 = self.get_new_radians(phi_1, lambda_1, d, brng)
                 

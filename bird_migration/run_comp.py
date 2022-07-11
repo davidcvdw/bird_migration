@@ -13,7 +13,7 @@ from scipy.interpolate import RegularGridInterpolator
 filterwarnings("ignore") 
 
 # where to save files
-dst_path = "results_new"
+dst_path = "new_results_comp"
 
 ## RUN SIMULATIONS
 
@@ -52,8 +52,9 @@ NUM_BIRDS = START_BIRDS.shape[0]
 
 GOAL = np.full((NUM_BIRDS, 2), [10.326959202709325, -66.8424582162393])
 
-# for t in tqdm(range(716)):
-for t in tqdm(range(2)):
+for t in tqdm(range(716)):
+
+    np.random.seed(t)
 
     SELF_SPEED = (7*np.random.rand(NUM_BIRDS)) + 8
     
@@ -159,16 +160,20 @@ dfs.drop('index_right', axis=1, inplace=True)
 dfs = dfs.astype({'bird': 'int32', 't':'int32'})
 dfs.rename({'name': 'country'}, axis=1, inplace=True)
 dfs.airspeed = dfs.airspeed.ffill()
+dfs.to_pickle(fr"{dst_path}\processed\europe_birds.p")
 
 ## Evaluating wind speeds
 
 wind_comps = []
-for bird in tqdm(dfs.bird.unique()):
+for date in tqdm(dfs.departure.unique()):
     
-    df = dfs[dfs.bird == bird].reset_index(drop=True)
+    df2 = dfs[dfs.departure == date].reset_index(drop=True)
+    
+    # We need to remove the final timestep, because we do not fly then
+    df = df2[~df2.country.notna()]
     
     list_dates = [df.loc[0, 'departure'] + 
-                  Timedelta(hours=i) for i in range(len(df))]
+                  Timedelta(hours=i) for i in range(40)]
     
     WIND = np.stack((
         da['u'].sel(time = DataArray(list_dates)).values, 
@@ -197,6 +202,6 @@ for bird in tqdm(dfs.bird.unique()):
     
     wind_comps.append(np.column_stack((u,v)))
 
-dfs[['u', 'v']] = np.concatenate(wind_comps)
+dfs.loc[~dfs.country.notna(), ['u', 'v']] = np.concatenate(wind_comps)
 
-dfs.to_pickle(fr"{dst_path}\processed\europe_birds.p")
+dfs.to_pickle(fr"{dst_path}\processed\europe_birds_wind.p")

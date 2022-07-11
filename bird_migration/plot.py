@@ -4,8 +4,11 @@ import geopandas as gpd
 import movingpandas as mpd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from warnings import filterwarnings
 
-path = "results_new"
+filterwarnings("ignore") 
+
+path = "new_results_constant"
 
 dfs = pd.read_pickle(fr"{path}\processed\europe_birds.p")
 
@@ -32,7 +35,7 @@ for date in tqdm(dfs.departure.unique()):
     ax.set_xlim(BOUNDS[1,0], BOUNDS[1,1])
     ax.set_ylim(BOUNDS[0,0], BOUNDS[0,1])
     
-    gdf_traj[gdf_traj.t == 0].plot(ax=ax, color='blue', markersize=20)
+    gdf_traj[gdf_traj.t == 0].plot(ax=ax, color='green', markersize=20)
     gdf_traj[gdf_traj.country.notna()].plot(ax=ax, color='red', markersize=20)
     
     traj_collection = mpd.TrajectoryCollection(

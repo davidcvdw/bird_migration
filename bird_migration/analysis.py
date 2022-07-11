@@ -1,11 +1,12 @@
 import pandas as pd
 from glob import glob
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 
-dfs = pd.read_pickle(r"results2\processed\europe_birds2.p")
+dfs = pd.read_pickle(r"new_results_constant\processed\europe_birds_wind.p")
 
 # Total simulated birds
-num_sims = len(glob("results2" + '/*.p'))
+num_sims = len(glob("new_results_constant" + '/*.p'))
 num_birds = 3329
 total_birds = num_sims * num_birds
 
@@ -80,7 +81,7 @@ for i in range(24):
 
 print("\nTotal arrived birds: {}".format(total_arrived))
 print("Total simulated birds: {}".format(total_birds))
-print("% Birds arrived: {:.3%}\n".format(100*total_arrived/total_birds))
+print("% Birds arrived: {:.3%}\n".format(total_arrived/total_birds))
 print("Arrived birds per country \n{}\n".format(arrived_country))
 
 # Take-off information
@@ -101,10 +102,11 @@ ax = dfs0.sunset.hist(bins=bins, grid=False, density=True)
 ax.set_xticks(list(range(-12,13,2)))
 ax.set_xlabel('Hours from sunset')
 ax.set_ylabel('Number of birds')
+plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
 plt.show()
 
 # Wind information
-wind = dfs[['u', 'v', 'w', 'angle']].describe()[1:]
+wind = dfs[['u', 'v']].describe()[1:]
 # Compare against others???
 
 # Bearing information
